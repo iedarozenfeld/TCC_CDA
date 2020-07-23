@@ -1,0 +1,322 @@
+---
+title: "TCC CDA BLACK LIVES MATTER"
+author: "Cris, Ieda e Marilia"
+date: "20 jul 2020"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+
+obs: para fazer comentário no .rmd utilizar <!-- --> 
+
+
+<!--  imagino que isso era para ser um comentário?
+#GeoBR
+#https://www.rdocumentation.org/packages/geobr/versions/1.3
+#https://concla.ibge.gov.br/classificacoes/por-tema/codigo-de-areas/codigo-de-areas
+-->
+
+# Carrega bibliotecas
+
+```{r}
+install.packages("geobr", dependencies = T)
+```
+
+
+
+```{r}
+
+library(plotly)
+library(tidyverse)
+library(fs)
+library(leaflet)
+library(lubridate)
+library(rvest)
+library(purrr)
+library(geosphere)
+library(geobr)
+library(sf)
+library(ggplot2)
+library(dplyr)
+library (colorspace)
+
+```
+
+```{r}
+conj_dados <- list_geobr()
+```
+
+#carrega regi??es do Brasil conforme tabela do IBGE
+```{r}
+reg <- read_region(year=2018) %>%
+  # mudando Centro Oeste para Centro-Oeste para ser compatível com a outra tabela
+  mutate(name_region=if_else(name_region%>%str_detect(fixed("Centro Oeste")), "Centro-Oeste", name_region))
+plot(reg)
+#map <-leaflet(reg) %>% addTiles()
+#map %>% addPolygons()
+```
+
+# Lista arquivos no diretorio e dados
+```{r}
+dir_ls("DATA")
+```
+
+DATA/TABELA 2.4
+Renda domiciliar per capita das chefes de fam??lia por Cor/Ra??a - Brasil e Regi??es, 1995 a 2015.
+
+DATA/TABELA 2.6
+Distribui????o percentual das fam??lias chefiadas por mulheres, segundo cor/ra??a e faixa de anos de estudo da chefe de fam??lia - Brasil, 1995 a 2015
+
+DATA/TABELA 6.1
+Popula????o economicamente ativa de 16 anos ou mais de idade, por sexo, segundo cor/ra??a e localiza????o do domic??lio - Brasil e Regi??es, 1995 a 2015
+
+Fonte: IPEA e IBGE/PNAD
+**** a popula????o negra ?? composta por pretos e pardos
+**** renda domiciliar per capita deflacionada com base no INPC, per??odo refer??ncia               set./2015
+
+Observa????o: os dados obtidos referem-se ao Censo mais recente = anos de 1995 a 2015
+
+# Renda Per Capita
+
+```{r}
+df_renda_per_capita <- readxl::read_xlsx("DATA/Tabela_2.4_Feminina.xlsx")
+```
+
+Faz uma tabela auxiliar de Mulheres Negras ordenada por Regiao e Ano
+
+```{r}
+df_renda_per_capita_mulheres_negras <- df_renda_per_capita %>%
+  filter(`Cor/Raça` == "Negra")
+df_renda_per_capita_mulheres_negras
+```
+#Plota mapa do Brasil
+```{r}
+df_renda_per_capita_mulheres_negras_2015 <- df_renda_per_capita %>%
+  filter(`Cor/Raça` == "Negra") %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor")  %>%
+  filter(`ano` == "2015.0")
+  
+#####falta plotar 
+df_renda_per_capita_mulheres_negras_2015 %>% 
+  # join com a tabela com os "mapas"
+  left_join(reg, by=c(`Região`="name_region")) %>%
+  ggplot() +
+    geom_sf(aes(geometry=geom,
+                fill=valor)) +
+    scale_fill_distiller(palette="YlOrRd") +
+    theme_minimal()
+
+
+
+#map = leaflet(reg)
+#plot(map)
+#%>% 
+#map %>% addMarkers()
+```
+
+
+Faz uma tabela auxiliar de Mulheres Brancas ordenada por Regiao e Ano
+
+```{r}
+df_renda_per_capita_mulheres_brancas <- df_renda_per_capita %>%
+  filter(`Cor/Raça` == "Branca")
+df_renda_per_capita_mulheres_brancas
+```
+
+
+# Grafico de Renda Per Capita Mulheres Brancas por Ano e Regi??o
+
+```{r}
+df_renda_per_capita_mulheres_brancas %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+    ggplot(aes( as.integer(ano) ,valor, group = `Região`, color = `Região`)) +
+    geom_line(size=2) +
+    labs(title = "Renda Per Capita Mulheres Brancas Chefes de Família", caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html
+",  x = "Ano", y = "Valor em Reais")
+```
+
+
+# Grafico de Renda Per Capita de Mulheres Negras por Regiao de 1995 a 2015
+
+```{r}
+df_renda_per_capita_mulheres_negras %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+    ggplot(aes( as.integer(ano) ,valor, group = `Região`, color = `Região`)) +
+    geom_line(size=2) +
+    labs(title = "Renda Per Capita Mulheres Negras Chefes de Família", caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html
+",  x = "Ano", y = "Valor em Reais")
+```
+Faz uma tabela auxiliar de Renda Per Capita de Mulheres Negras no Brasil em 1995 para plotar grafico por regiao
+#fazer mapa TTTTT
+
+```{r}
+df_renda_per_capita_mulheres_Negras_2015 <- df_renda_per_capita_mulheres_negras %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+filter(`ano` == '2015.0')
+df_renda_per_capita_mulheres_Negras_2015
+
+```
+
+
+Faz uma tabela auxiliar de Renda Per Capita de Mulheres Brancas e Negras no Brasil
+
+```{r}
+df_renda_per_capita_mulheres_Brasil <- df_renda_per_capita %>%
+  filter(`Região` == "Brasil")
+df_renda_per_capita_mulheres_Brasil
+```
+
+# Grafico de Renda Per Capita de Mulheres Brancas e Negras no Brasil de 1995 a 2015
+
+```{r}
+df_renda_per_capita_mulheres_Brasil %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+     ggplot(aes( as.integer(ano) ,valor, group = `Cor/Raça`, color = `Cor/Raça`)) +
+    geom_line(size=3) +
+    labs(title = "Renda Per Capita Mulheres Negras e Brancas Chefes de Família",  subtitle = "Brasil" , caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html
+",  x = "Ano", y = "Valor em Reais")
+```
+
+Faz uma tabela auxiliar de Renda Per Capita de Mulheres Brancas e Negras no Centro-Oeste
+
+```{r}
+df_renda_per_capita_mulheres_Centro_Oeste <- df_renda_per_capita %>%
+  filter(`Região` == "Centro-Oeste")
+df_renda_per_capita_mulheres_Centro_Oeste
+```
+
+# Grafico de Renda Per Capita de Mulheres Brancas e Negras no Centro-Oeste de 1995 a 2015
+
+```{r}
+df_renda_per_capita_mulheres_Centro_Oeste %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+     ggplot(aes( as.integer(ano) ,valor, group = `Cor/Raça`, color = `Cor/Raça`) )+
+    geom_step(size=2) +
+    labs(title = "Renda Per Capita Mulheres Negras e Brancas Chefes de Família",  subtitle = "Centro-Oeste" , caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html
+",  x = "Ano", y = "Valor em Reais")
+```
+
+
+
+# Distribui????o percentual das fam??lias chefiadas por mulheres, segundo cor/ra??a e faixa de anos de estudo da chefe de fam??lia - Brasil, 1995 a 2015
+
+```{r}
+df_anos_de_estudo <- readxl::read_xlsx("DATA/Tabela_2.6.xlsx")
+df_anos_de_estudo
+```
+
+
+# Tabelas auxiliares de Mulheres Chefes de Familia por Ra??a e Total - valores percentuais
+Ano referência 2015
+
+```{r}
+df_anos_de_estudo_mulheres_negras <- df_anos_de_estudo %>%
+  filter(`Cor/Raça` == "Negra")
+df_anos_de_estudo_mulheres_negras
+
+df_anos_de_estudo_mulheres_brancas <- df_anos_de_estudo %>%
+  filter(`Cor/Raça` == "Branca")
+df_anos_de_estudo_mulheres_brancas
+
+df_anos_de_estudo_mulheres_total <- df_anos_de_estudo %>%
+  filter(`Cor/Raça` == "Total")
+df_anos_de_estudo_mulheres_total
+```
+
+
+#Gr??fico Pizza Anos de Estudo em 2015
+```{r}
+df_anos_de_estudo_mulheres_negras %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+  filter (ano == "2015.0") %>% 
+  arrange(valor) %>%
+  mutate(`Anos de Estudo`=`Anos de Estudo`%>%fct_inorder()) %>%
+  ggplot(aes(x="", y=valor, fill=`Anos de Estudo`)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void()
+# ggplot(aes( as.integer(ano) ,valor, group = Regi??o, color = Regi??o)) + 
+     #geom_point()
+  
+  df_anos_de_estudo_mulheres_negras
+ 
+```
+
+ ggplot(aes(),) +
+  labs(title = "Taxa de participa????o das Mulheres Negras com 16 anos ou mais de idade e grupos de anos de estudo - Brasil, 2015",  x = "Anos de Estudo", y = "%")
+ 
+ ggplot(aes( as.integer(ano) ,valor, group = `Cor/Ra??a`, color = `Cor/Ra??a`) )+
+    geom_step(size=2) +
+    labs(title = "Renda Per Capita Mulheres Negras e Brancas Chefes de Fam??lia",  subtitle = "Centro-Oeste" , caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html
+",  x = "Ano", y = "Valor em Reais")
+
+
+# Anos de Estudo Mulheres Negras Chefes de Fam??lia
+
+
+```{r}
+df_anos_de_estudo_mulheres_negras %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+   #filter (`ano` == "2015.0") %>%
+    ggplot(aes( as.integer(ano) , valor,  group = `Anos de Estudo`, color = `Anos de Estudo` )) +
+# ggplot(aes( as.integer(ano) ,valor, group = Regi??o, color = Regi??o)) + 
+     #geom_point() +
+  geom_smooth() +
+    labs(title = "Anos de Estudo Mulheres Negras Chefes de Fam??lia", caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html
+",  x = "Ano" , y = "Percentual")
+
+
+```
+ 
+
+
+```{r}
+df_anos_de_estudo_mulheres_negras %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor")
+```
+
+
+
+```{r}
+df_anos_de_estudo_mulheres_negras %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+  #count("Anos de Estudo",sort=T) %>%
+   ggplot(aes( as.integer(`ano`) ,valor, group = (`Anos de Estudo`)  , fill = `Anos de Estudo` ))  + geom_col()  + 
+  labs( title = "Anos de Estudo Mulheres Negras Chefes de Fam??lia", caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html",  x = "Ano" )
+```
+
+Anos de Estudo Mulheres Brancas Chefes de Fam??lia
+
+```{r}
+df_anos_de_estudo_mulheres_brancas %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+   ggplot(aes( as.integer(`ano`) ,valor, group = (`Anos de Estudo`)  , fill = `Anos de Estudo` ))  + geom_col()  + 
+  labs( title = "Anos de Estudo Mulheres Brancas Chefes de Fam??lia", caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html",  x = "Ano" )
+```
+
+Anos de Estudo Mulheres Chefes de Fam??lia
+
+```{r}
+df_anos_de_estudo_mulheres_total %>%
+  pivot_longer(cols = `1995.0` : `2015.0` , names_to = "ano", values_to = "valor") %>%
+   ggplot(aes( as.integer(`ano`) ,valor, group = (`Anos de Estudo`)  , fill = `Anos de Estudo` ))  + geom_col()  + 
+  labs( title = "Anos de Estudo Mulheres Chefes de Fam??lia", caption = "fonte: https://www.ipea.gov.br/retrato/indicadores_chefia_familia.html",  x = "Ano" )
+```
+
+
+# Popula????o economicamente ativa de 10 anos ou mais de idade, por sexo, segundo cor/ra??a, localiza????o do domic??lio e faixa et??ria - Brasil, 1995 a 2015
+Fonte: IBGE/PNAD															
+Elabora????o: IPEA/DISOC															
+* a PNAD n??o foi realizada no ano de 2000 e 2010															
+** em 2004 a PNAD passa a contemplar a popula????o rural de Rond??nia, Acre, Amazonas, Roraima, Par?? e Amap??															
+*** a popula????o negra ?? composta por pretos e pardos															
+**** s??o consideradas economicamente ativas as pessoas ocupadas e desocupadas (desde que procurando emprego) na semana de refer??ncia															
+
+```{r}
+df_populacao_economicamente_ativa <- readxl::read_xlsx("DATA/Tabela_6.1.xlsx")
+
+```
+
+#PAREI AQUI
